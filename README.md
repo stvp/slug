@@ -1,7 +1,7 @@
 # slug
 
 `slug` is a package that sanitizes and normalizes strings for use in things like
-URLs:
+URLs by removing / converting characters that are not in the set `[0-9A-Za-z]`:
 
 ```go
 package main
@@ -23,9 +23,9 @@ import github.com/stvp/slug
 
 func main() {
   slug.Replacement = '-'
-  ...
+  slug.Clean("L'école 24") // "l-ecole-24"
 }
 ```
 
-[API docs](http://go.pkgdoc.org/github.com/stvp/slug).
+[API docs](http://go.pkgdoc.org/github.com/stvp/slug)
 

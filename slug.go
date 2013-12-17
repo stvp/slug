@@ -2,10 +2,9 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package slug transforms strings into a normalized form that is safe for use
-// in URLs. It is also useful for sanitizing user-submitted data because it
-// removes or replaces everything except for Latin alphanumeric characters and
-// removes diacritical marks.
+// Package slug provides utility functions for normalizing strings into
+// "slugs". Slugs are lower-case, sanitized strings that are safe for use in
+// sensitive environments like URLs.
 package slug
 
 import (
@@ -14,9 +13,10 @@ import (
 )
 
 var (
-	// Non alphanumeric unicode characters will be replaced with this byte.
+	// Replace non-alphanumeric characters with this byte.
 	Replacement = '_'
 
+	// The "safe" set of characters.
 	alphanum = &unicode.RangeTable{
 		R16: []unicode.Range16{
 			{0x0030, 0x0039, 1}, // 0-9
@@ -24,6 +24,7 @@ var (
 			{0x0061, 0x007A, 1}, // a-z
 		},
 	}
+	// Characters in these ranges will be ignored.
 	nop = []*unicode.RangeTable{
 		unicode.Mark,
 		unicode.Sk, // Symbol - modifier
@@ -55,7 +56,7 @@ func Clean(s string) string {
 		}
 	}
 
-	// Strip trailing Replacement byte.
+	// Strip trailing Replacement byte
 	if i := len(buf) - 1; i >= 0 && buf[i] == Replacement {
 		buf = buf[:i]
 	}
