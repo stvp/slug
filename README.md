@@ -1,9 +1,31 @@
 # slug
 
-See the [API docs](http://go.pkgdoc.org/github.com/extemporalgenome/slug).
+`slug` is a package that sanitizes and normalizes strings for use in things like
+URLs:
 
-Latin-ish inputs should have very stable output. All inputs are passed through
-an NFKD transform, and anything still in the unicode Letter and Number
-categories are passed through intact. Anything in the Mark or Lm/Sk categories
-(modifiers) are skipped, and runs of characters from any other categories are
-collapsed to a single hyphen.
+```go
+package main
+
+import github.com/stvp/slug
+
+func main() {
+  slug.Clean("L'école 24") // "l_ecole_24"
+  slug.Clean("\x00\x08clean") // "clean"
+}
+```
+
+You can also customize the replacement string:
+
+```go
+package main
+
+import github.com/stvp/slug
+
+func main() {
+  slug.Replacement = '-'
+  ...
+}
+```
+
+[API docs](http://go.pkgdoc.org/github.com/stvp/slug).
+
