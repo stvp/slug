@@ -6,41 +6,32 @@ package slug
 
 import "testing"
 
-func TestIsSlugAscii(t *testing.T) {
-	tests := []struct {
-		s string
-		b bool
-	}{
-		{"", false},
-		{"-", false},
-		{"A", false},
-		{"a", true},
-		{"-a", false},
-		{"a-", false},
-		{"a-0", true},
-		{"aa", true},
-		{"a--0", false},
-		{"abc世界def", false},
+func TestSlug(t *testing.T) {
+	tests := [][]string{
+		{"", ""},
+		{"-", ""},
+		{"a**b", "a_b"},
+		{"  a  ", "a"},
+		{"_a__b_", "a_b"},
+		{"L'école", "l_ecole"},
+		{"99 bottles of beer", "99_bottles_of_beer"},
+		{"abc世界def", "abc_def"},
+		{"\x08lol", "lol"},
 	}
 
 	for _, test := range tests {
-		if IsSlugAscii(test.s) != test.b {
-			t.Error(test.s, "!=", test.b)
+		if Clean(test[0]) != test[1] {
+			t.Error(Clean(test[0]), "!=", test[1])
 		}
 	}
 }
 
-func TestSlugAscii(t *testing.T) {
-	var tests = []struct{ in, out string }{
-		{"ABC世界def-", "abc-e4b896e7958c-def"},
-		{"012世界", "012-e4b896e7958c"},
-		{"世界345", "e4b896e7958c-345"},
-		{"012-世界-345", "012-e4b896e7958c-345"},
-	}
+func TestSlug_WithCustomReplacement(t *testing.T) {
+	original := Replacement
+	defer func() { Replacement = original }()
+	Replacement = 'X'
 
-	for _, test := range tests {
-		if out := SlugAscii(test.in); out != test.out {
-			t.Errorf("%q: %q != %q", test.in, out, test.out)
-		}
+	if Clean("a b") != "aXb" {
+		t.Error(Clean("a b"), "!= aXb")
 	}
 }

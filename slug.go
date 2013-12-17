@@ -2,109 +2,63 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package slug transforms strings into a normalized form well suited for use in URLs.
+// Package slug transforms strings into a normalized form that is safe for use
+// in URLs. It is also useful for sanitizing user-submitted data because it
+// removes or replaces everything except for Latin alphanumeric characters and
+// removes diacritical marks.
 package slug
 
 import (
 	"code.google.com/p/go.text/unicode/norm"
-	"encoding/hex"
 	"unicode"
-	"unicode/utf8"
 )
 
-var lat = []*unicode.RangeTable{unicode.Letter, unicode.Number}
-var nop = []*unicode.RangeTable{unicode.Mark, unicode.Sk, unicode.Lm}
+var (
+	// Non alphanumeric unicode characters will be replaced with this byte.
+	Replacement = '_'
 
-// Slug replaces each run of characters which are not unicode letters or
-// numbers with a single hyphen, except for leading or trailing runs. Letters
+	alphanum = &unicode.RangeTable{
+		R16: []unicode.Range16{
+			{0x0030, 0x0039, 1}, // 0-9
+			{0x0041, 0x005A, 1}, // A-Z
+			{0x0061, 0x007A, 1}, // a-z
+		},
+	}
+	nop = []*unicode.RangeTable{
+		unicode.Mark,
+		unicode.Sk, // Symbol - modifier
+		unicode.Lm, // Letter - modifier
+		unicode.Cc, // Other - control
+		unicode.Cf, // Other - format
+	}
+)
+
+// Slug replaces each run of characters which are not ASCII letters or numbers
+// with the Replacement character, except for leading or trailing runs. Letters
 // will be stripped of diacritical marks and lowercased. Letter or number
-// codepoints that do not have combining marks or a lower-cased variant will
-// be passed through unaltered.
-func Slug(s string) string {
+// codepoints that do not have combining marks or a lower-cased variant will be
+// passed through unaltered.
+func Clean(s string) string {
 	buf := make([]rune, 0, len(s))
-	dash := false
+	replacement := false
+
 	for _, r := range norm.NFKD.String(s) {
 		switch {
-		// unicode 'letters' like mandarin characters pass through
-		case unicode.IsOneOf(lat, r):
+		case unicode.In(r, alphanum):
 			buf = append(buf, unicode.ToLower(r))
-			dash = true
+			replacement = true
 		case unicode.IsOneOf(nop, r):
 			// skip
-		case dash:
-			buf = append(buf, '-')
-			dash = false
+		case replacement:
+			buf = append(buf, Replacement)
+			replacement = false
 		}
 	}
-	if i := len(buf) - 1; i >= 0 && buf[i] == '-' {
+
+	// Strip trailing Replacement byte.
+	if i := len(buf) - 1; i >= 0 && buf[i] == Replacement {
 		buf = buf[:i]
 	}
-	return string(buf)
-}
 
-// SlugAscii is identical to Slug, except that runs of one or more unicode
-// letters or numbers that still fall outside the ASCII range will have their
-// UTF-8 representation hex encoded and delimited by hyphens. As with Slug, in
-// no case will hyphens appear at either end of the returned string.
-func SlugAscii(s string) string {
-	const m = utf8.UTFMax
-	var (
-		ib    [m * 3]byte
-		ob    []byte
-		buf   = make([]byte, 0, len(s))
-		dash  = false
-		latin = true
-	)
-	for _, r := range norm.NFKD.String(s) {
-		switch {
-		case unicode.IsOneOf(lat, r):
-			r = unicode.ToLower(r)
-			n := utf8.EncodeRune(ib[:m], r)
-			if r >= 128 {
-				if latin && dash {
-					buf = append(buf, '-')
-				}
-				n = hex.Encode(ib[m:], ib[:n])
-				ob = ib[m : m+n]
-				latin = false
-			} else {
-				if !latin {
-					buf = append(buf, '-')
-				}
-				ob = ib[:n]
-				latin = true
-			}
-			dash = true
-			buf = append(buf, ob...)
-		case unicode.IsOneOf(nop, r):
-			// skip
-		case dash:
-			buf = append(buf, '-')
-			dash = false
-			latin = true
-		}
-	}
-	if i := len(buf) - 1; i >= 0 && buf[i] == '-' {
-		buf = buf[:i]
-	}
 	return string(buf)
-}
-
-// IsSlugAscii returns true only if SlugAscii(s) == s.
-func IsSlugAscii(s string) bool {
-	dash := true
-	for _, r := range s {
-		switch {
-		case r == '-':
-			if dash {
-				return false
-			}
-			dash = true
-		case 'a' <= r && r <= 'z', '0' <= r && r <= '9':
-			dash = false
-		default:
-			return false
-		}
-	}
-	return !dash
 }
